@@ -1,4 +1,6 @@
 const argon2 = require("argon2");
+require("dotenv").config();
+const jwt = require("jsonwebtoken");
 
 const hashingOptions = {
   type: argon2.argon2id,
@@ -24,6 +26,33 @@ const hashPassword = (req, res, next) => {
     });
 };
 
-module.exports = {
-  hashPassword,
+const verifyPassword = (req, res) => {
+  argon2
+    .verify(req.user.hashedPassword, req.body.password)
+    .then((isVerified) => {
+      if (isVerified) {
+        const payload = { sub: req.user.id };
+        console.log(payload,"gogo")
+        console.log(process.env.JWT_SECRET)
+
+        const token = jwt.sign(payload, process.env.JWT_SECRET, {
+          expiresIn: "20h",
+          
+        });
+
+        delete req.user.hashedPassword;
+        res.send({ token, user: req.user });
+      } else {
+        res.sendStatus(401);
+      }
+    })
+    .catch((err) => {
+      console.error(err);
+      res.sendStatus(500);
+    });
 };
+  
+  module.exports = {
+    hashPassword,
+    verifyPassword, // don't forget to export
+  };
